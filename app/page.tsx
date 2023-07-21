@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { DragEvent, DragEventHandler, useCallback, useMemo, useRef, useState } from "react";
 import ReactFlow, {
     Controls,
     MiniMap,
@@ -25,9 +25,15 @@ import ReactFlow, {
     Panel,
     useReactFlow,
     ReactFlowProvider,
+    OnConnectStart,
+    ReactFlowInstance,
 } from "reactflow";
 import clsx from "clsx";
 import "reactflow/dist/style.css";
+import Handles from "@/components/Handles";
+import RotateButton from "@/components/RotateButton";
+import DuctShape from "@/components/DuctShape";
+import Panels from "@/components/Panels";
 
 const initialNodes: Node[] = [
     {
@@ -49,6 +55,12 @@ const initialNodes: Node[] = [
         data: { type: "duct-end" },
         position: { x: 200, y: 200 },
     },
+    {
+        id: "4",
+        type: "custom",
+        data: { type: "rect" },
+        position: { x: 50, y: 200 },
+    },
 ];
 // const initialEdges: Edge[] = [{ id: '1-2', source: '1', target: '2', label: "to the", type: "step" }];
 const initialEdges: Edge[] = [
@@ -66,55 +78,111 @@ const initialEdges: Edge[] = [
     },
 ];
 
+let id = 0;
+const getId = () => `dndnode_${id++}`;
+
 export default function App() {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-    const reactFlowWrapper = useRef(null);
-
+    const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+    const reactFlowWrapper = useRef<HTMLDivElement | null>(null);
     const nodeTypes = useMemo(() => ({ custom: CustomNode }), []);
+    const connectingNodeId = useRef<string | null>(null);
+
+    const onDragOver = useCallback((event: DragEvent) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+    }, []);
+
+    const onDrop = useCallback(
+        (event: DragEvent) => {
+            event.preventDefault();
+
+            const reactFlowBounds = reactFlowWrapper.current!.getBoundingClientRect();
+            const type = event.dataTransfer.getData("application/reactflow");
+
+            console.log(type);
+            // check if the dropped element is valid
+            if (typeof type === "undefined" || !type) {
+                return;
+            }
+
+            const position = reactFlowInstance!.project({
+                x: event.clientX - reactFlowBounds.left,
+                y: event.clientY - reactFlowBounds.top,
+            });
+            const newNode: Node = {
+                id: getId(),
+                type: "custom",
+                position,
+                data: { type },
+            };
+
+            setNodes((nds) => nds.concat(newNode));
+        },
+        [reactFlowInstance]
+    );
+
     // const edgeTypes = useMemo(() => ({ special: CustomEdge }), []);
     const onConnect: OnConnect = useCallback(
         (connection) => setEdges((eds) => addEdge(connection, eds)),
         [setEdges]
     );
 
+    const onConnectStart: OnConnectStart = useCallback((_, { nodeId }) => {
+        connectingNodeId.current = nodeId;
+        console.log(" on connect start", nodeId);
+    }, []);
+
+    // const onConnectEnd = useCallback((event) => {});
     return (
-        <div className="w-screen h-screen" ref={reactFlowWrapper}>
-            <ReactFlow
-                fitView
-                className="bg-teal-50"
-                nodeTypes={nodeTypes}
-                snapGrid={[14, 14]}
-                snapToGrid
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-            >
-                <MiniMap />
-                {/* <Handle type="target" position={Position.Left} />
-          <Handle type="target" position={Position.Right} /> */}
-                <NodeResizer />
-                <Panel position="top-left">Top left</Panel>
-                <Background variant={"dots" as BackgroundVariant} gap={14} size={1} color="#ccc" />
-                <NodeToolbar />
-                <Controls />
-            </ReactFlow>
+        <div className="">
+            <ReactFlowProvider>
+                <div className="w-screen h-[100dvh]" ref={reactFlowWrapper}>
+                    <ReactFlow
+                        fitView
+                        className="bg-teal-50 touchdevice-flow"
+                        nodeTypes={nodeTypes}
+                        snapGrid={[14, 14]}
+                        onInit={setReactFlowInstance}
+                        snapToGrid
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnectStart={onConnectStart}
+                        onConnect={onConnect}
+                        onDrop={onDrop}
+                        onDragOver={onDragOver}
+                    >
+                        <MiniMap />
+                        <NodeResizer />
+                        <Sidebar />
+                        {/* <Panels /> */}
+                        <Background
+                            variant={"dots" as BackgroundVariant}
+                            gap={14}
+                            size={1}
+                            color="#ccc"
+                        />
+                        <NodeToolbar />
+                        <Controls />
+                    </ReactFlow>
+                </div>
+            </ReactFlowProvider>
         </div>
     );
 }
 
 function CustomNode({ data, isConnectable }: NodeProps) {
     const [rotation, setRotation] = useState(0);
-    const width = data.type === "two-duct" ? 84 : 126;
 
-    console.log(rotation);
-    const onHoverHandler = () => {};
+    const onRotateHandler = () => {
+        setRotation((prev) => prev + 90);
+    };
     return (
         <div className="relative group">
             <div
-                onMouseOver={onHoverHandler}
                 className={clsx(
                     "flex relative",
                     rotation % 360 === 0 && "rotate-0",
@@ -123,96 +191,46 @@ function CustomNode({ data, isConnectable }: NodeProps) {
                     rotation % 360 === 270 && "-rotate-90"
                 )}
             >
-                <Image
-                    src={`${data.type}.svg`}
-                    width={width}
-                    height="100"
-                    alt="Tri duct connector"
-                />
-                <button
-                    onClick={() => setRotation((prev) => prev + 90)}
-                    className={`absolute m-auto w-fit left-0 bottom-2.5 active:scale-105 active:bg-green-300 outline outline-blue-600 bg-white rounded-full p-1 right-0 `}
-                >
-                    <Image src="rotate.svg" width="14" height="14" alt="Rotate Duct Pipe" />
-                </button>
+                <DuctShape type={data.type} />
+                <RotateButton onRotateHandler={onRotateHandler} type={data.type} />
                 <Handles type={data.type} isConnectable={isConnectable} />
-                {/* <Handle id="b" type="source"  position={Position.Top} style={{left: 5}} className=" !bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
-                {/* <Handle type="source" position={Position.Left} className="!h-4 !rounded-none !border-none !bg-green-400 !rounded-sm" /> */}
-                {/* <Handle type="target" position={Position.Right} className="!h-4 !w-[0.1px] !translate-y-[0.3px] !rounded-none !border-none" /> */}
-                {/* <Handle id="b" type="source" position={Position.Left} className=" !bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
-                {/* <Handle  id="c" type="source" position={Position.Right} className=" !bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
             </div>
         </div>
     );
 }
 
-const Handles = ({ type, isConnectable }: { type: string; isConnectable: boolean }) => {
-    if (type === "duct-end") {
-        return (
-            <>
-                <Handle
-                    id="a"
-                    type="source"
-                    position={Position.Top}
-                    className="!bg-green-400  !shadow  !w-6 !h-2 !rounded-sm"
-                    isConnectable={isConnectable}
-                />
-                <Handle
-                    id="b"
-                    type="source"
-                    position={Position.Bottom}
-                    className="!bg-green-400  !shadow  !w-6 !h-2  !rounded-sm"
-                    isConnectable={isConnectable}
-                />
-            </>
-        );
-    } else if (type === "tri-duct") {
-        return (
-            <>
-                <Handle
-                    id="a"
-                    type="source"
-                    position={Position.Top}
-                    className="!bg-green-400 !shadow  !w-6 !h-2  !rounded-sm"
-                    isConnectable={isConnectable}
-                />
-                <Handle
-                    id="b"
-                    type="source"
-                    position={Position.Left}
-                    className="!bg-green-400 !shadow  !w-2 !h-6 !rounded-sm !top-16"
-                    isConnectable={isConnectable}
-                />
-                <Handle
-                    id="c"
-                    type="source"
-                    position={Position.Right}
-                    className="!bg-green-400 !shadow  !w-2 !h-6 !rounded-sm !top-16"
-                    isConnectable={isConnectable}
-                />
-                {/* <Handle id="b" type="source" position={Position.Bottom} className="!bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
-            </>
-        );
-    } else if (type === "two-duct") {
-        return (
-            <>
-                <Handle
-                    id="a"
-                    type="source"
-                    position={Position.Top}
-                    className="!bg-green-400 !shadow  !w-6 !h-2 !rounded-sm !left-[3.75rem]"
-                    isConnectable={isConnectable}
-                />
-                <Handle
-                    id="b"
-                    type="source"
-                    position={Position.Left}
-                    className=" !bg-green-400 !shadow  !w-2 !h-6 !rounded-sm  !top-16"
-                    isConnectable={isConnectable}
-                />
-                {/* <Handle id="b" type="source" position={Position.Bottom} className="!bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
-            </>
-        );
-    }
-    return null;
+export const Sidebar = () => {
+    const onDragStart = (event: React.DragEvent<HTMLDivElement>) => {
+        const ductType = event.currentTarget.dataset.type;
+        event.dataTransfer.setData("application/reactflow", ductType!);
+        event.dataTransfer.effectAllowed = "move";
+    };
+
+    return (
+        <aside className="absolute z-50 flex gap-2 mt-4 ml-4">
+            <DuctDraggable type="rect" onDragStart={onDragStart} />
+            <DuctDraggable type="two-duct" onDragStart={onDragStart} />
+            <DuctDraggable type="tri-duct" onDragStart={onDragStart} />
+            <DuctDraggable type="duct-end" onDragStart={onDragStart} />
+        </aside>
+    );
+};
+
+const DuctDraggable = ({
+    type,
+    onDragStart,
+}: {
+    type: string;
+    onDragStart: (e: React.DragEvent<HTMLDivElement>) => void;
+}) => {
+    return (
+        <div
+            data-type={type}
+            onDragStart={onDragStart}
+            draggable
+            className="bg-green-200 outline outline-2 outline-white rounded-lg w-12 p-2 h-12 flex justify-center items-center"
+        >
+            <DuctShape type={type} />
+        </div>
+    );
 };
