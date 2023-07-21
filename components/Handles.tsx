@@ -72,9 +72,9 @@ const Handles = ({ type, isConnectable }: { type: string; isConnectable: boolean
             <>
                 <Handle
                     id="a"
-                    type="source"
+                    type="target"
                     position={Position.Top}
-                    className="!bg-green-400 !shadow  !w-6 !h-2 !rounded-sm"
+                    className="!bg-purple-400 !shadow  !w-6 !h-2 !rounded-sm"
                     isConnectable={isConnectable}
                 />
                 <Handle
@@ -93,9 +93,9 @@ const Handles = ({ type, isConnectable }: { type: string; isConnectable: boolean
                 />
                 <Handle
                     id="d"
-                    type="source"
+                    type="target"
                     position={Position.Bottom}
-                    className=" !bg-green-400 !shadow  !w-6 !h-2 !rounded-sm "
+                    className=" !bg-purple-400 !shadow  !w-6 !h-2 !rounded-sm "
                     isConnectable={isConnectable}
                 />
                 {/* <Handle id="b" type="source" position={Position.Bottom} className="!bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
