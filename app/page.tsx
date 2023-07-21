@@ -1,113 +1,218 @@
-import Image from 'next/image'
+"use client";
+import Image from "next/image";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import ReactFlow, {
+    Controls,
+    MiniMap,
+    NodeResizer,
+    NodeToolbar,
+    useNodesState,
+    useEdgesState,
+    addEdge,
+    Background,
+    BackgroundVariant,
+    Edge,
+    EdgeProps,
+    Node,
+    OnConnect,
+    EdgeTypes,
+    getBezierPath,
+    BaseEdge,
+    EdgeLabelRenderer,
+    Handle,
+    Position,
+    NodeProps,
+    Panel,
+    useReactFlow,
+    ReactFlowProvider,
+} from "reactflow";
+import clsx from "clsx";
+import "reactflow/dist/style.css";
 
-export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+const initialNodes: Node[] = [
+    {
+        id: "1",
+        type: "custom",
+        data: { type: "tri-duct" },
+        position: { x: 0, y: 50 },
+    },
+    {
+        id: "2",
+        type: "custom",
+        data: { type: "two-duct" },
+
+        position: { x: -200, y: 200 },
+    },
+    {
+        id: "3",
+        type: "custom",
+        data: { type: "duct-end" },
+        position: { x: 200, y: 200 },
+    },
+];
+// const initialEdges: Edge[] = [{ id: '1-2', source: '1', target: '2', label: "to the", type: "step" }];
+const initialEdges: Edge[] = [
+    {
+        id: "e1-2",
+        source: "1",
+        target: "2",
+        type: "straight",
+    },
+    {
+        id: "e1-3",
+        source: "1",
+        target: "3",
+        type: "straight",
+    },
+];
+
+export default function App() {
+    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+    const reactFlowWrapper = useRef(null);
+
+    const nodeTypes = useMemo(() => ({ custom: CustomNode }), []);
+    // const edgeTypes = useMemo(() => ({ special: CustomEdge }), []);
+    const onConnect: OnConnect = useCallback(
+        (connection) => setEdges((eds) => addEdge(connection, eds)),
+        [setEdges]
+    );
+
+    return (
+        <div className="w-screen h-screen" ref={reactFlowWrapper}>
+            <ReactFlow
+                fitView
+                className="bg-teal-50"
+                nodeTypes={nodeTypes}
+                snapGrid={[14, 14]}
+                snapToGrid
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+            >
+                <MiniMap />
+                {/* <Handle type="target" position={Position.Left} />
+          <Handle type="target" position={Position.Right} /> */}
+                <NodeResizer />
+                <Panel position="top-left">Top left</Panel>
+                <Background variant={"dots" as BackgroundVariant} gap={14} size={1} color="#ccc" />
+                <NodeToolbar />
+                <Controls />
+            </ReactFlow>
         </div>
-      </div>
-
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore the Next.js 13 playground.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+    );
 }
+
+function CustomNode({ data, isConnectable }: NodeProps) {
+    const [rotation, setRotation] = useState(0);
+    const width = data.type === "two-duct" ? 84 : 126;
+
+    console.log(rotation);
+    const onHoverHandler = () => {};
+    return (
+        <div className="relative group">
+            <div
+                onMouseOver={onHoverHandler}
+                className={clsx(
+                    "flex relative",
+                    rotation % 360 === 0 && "rotate-0",
+                    rotation % 360 === 90 && "rotate-90",
+                    rotation % 360 === 180 && "rotate-180",
+                    rotation % 360 === 270 && "-rotate-90"
+                )}
+            >
+                <Image
+                    src={`${data.type}.svg`}
+                    width={width}
+                    height="100"
+                    alt="Tri duct connector"
+                />
+                <button
+                    onClick={() => setRotation((prev) => prev + 90)}
+                    className={`absolute m-auto w-fit left-0 bottom-2.5 active:scale-105 active:bg-green-300 outline outline-blue-600 bg-white rounded-full p-1 right-0 `}
+                >
+                    <Image src="rotate.svg" width="14" height="14" alt="Rotate Duct Pipe" />
+                </button>
+                <Handles type={data.type} isConnectable={isConnectable} />
+                {/* <Handle id="b" type="source"  position={Position.Top} style={{left: 5}} className=" !bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
+                {/* <Handle type="source" position={Position.Left} className="!h-4 !rounded-none !border-none !bg-green-400 !rounded-sm" /> */}
+                {/* <Handle type="target" position={Position.Right} className="!h-4 !w-[0.1px] !translate-y-[0.3px] !rounded-none !border-none" /> */}
+                {/* <Handle id="b" type="source" position={Position.Left} className=" !bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
+                {/* <Handle  id="c" type="source" position={Position.Right} className=" !bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
+            </div>
+        </div>
+    );
+}
+
+const Handles = ({ type, isConnectable }: { type: string; isConnectable: boolean }) => {
+    if (type === "duct-end") {
+        return (
+            <>
+                <Handle
+                    id="a"
+                    type="source"
+                    position={Position.Top}
+                    className="!bg-green-400  !shadow  !w-6 !h-2 !rounded-sm"
+                    isConnectable={isConnectable}
+                />
+                <Handle
+                    id="b"
+                    type="source"
+                    position={Position.Bottom}
+                    className="!bg-green-400  !shadow  !w-6 !h-2  !rounded-sm"
+                    isConnectable={isConnectable}
+                />
+            </>
+        );
+    } else if (type === "tri-duct") {
+        return (
+            <>
+                <Handle
+                    id="a"
+                    type="source"
+                    position={Position.Top}
+                    className="!bg-green-400 !shadow  !w-6 !h-2  !rounded-sm"
+                    isConnectable={isConnectable}
+                />
+                <Handle
+                    id="b"
+                    type="source"
+                    position={Position.Left}
+                    className="!bg-green-400 !shadow  !w-2 !h-6 !rounded-sm !top-16"
+                    isConnectable={isConnectable}
+                />
+                <Handle
+                    id="c"
+                    type="source"
+                    position={Position.Right}
+                    className="!bg-green-400 !shadow  !w-2 !h-6 !rounded-sm !top-16"
+                    isConnectable={isConnectable}
+                />
+                {/* <Handle id="b" type="source" position={Position.Bottom} className="!bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
+            </>
+        );
+    } else if (type === "two-duct") {
+        return (
+            <>
+                <Handle
+                    id="a"
+                    type="source"
+                    position={Position.Top}
+                    className="!bg-green-400 !shadow  !w-6 !h-2 !rounded-sm !left-[3.75rem]"
+                    isConnectable={isConnectable}
+                />
+                <Handle
+                    id="b"
+                    type="source"
+                    position={Position.Left}
+                    className=" !bg-green-400 !shadow  !w-2 !h-6 !rounded-sm  !top-16"
+                    isConnectable={isConnectable}
+                />
+                {/* <Handle id="b" type="source" position={Position.Bottom} className="!bg-green-400 !rounded-sm" isConnectable={isConnectable}/> */}
+            </>
+        );
+    }
+    return null;
+};
